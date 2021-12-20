@@ -19,6 +19,8 @@ extern SPI_HandleTypeDef hspi1;
 void SD_PowerOn(void);
 uint8_t sd_ini(void);
 void SPI_Release(void);
+uint8_t SD_Read_Block (uint8_t *buff, uint32_t lba);
+uint8_t SD_Write_Block (uint8_t *buff, uint32_t lba);
 //--------------------------------------------------
 
 //--------------------------------------------------

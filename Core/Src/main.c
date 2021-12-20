@@ -39,6 +39,8 @@
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 volatile uint16_t Timer1=0;
+uint8_t sect[512] = {0};
+char buffer1[512] ="Selection ... The..."; //Буфер данных для записи/чтения
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -105,9 +107,13 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim2);
 
-
+  //uint16_t i;
   SD_PowerOn();
   sd_ini();
+  // SD_Write_Block((uint8_t*)buffer1,0x0400); 		// Write block of data
+  // SD_Read_Block(sect,0x0400); 					// Read block of data
+
+  int ggggg = 999;
   /* USER CODE END 2 */
 
   /* Infinite loop */

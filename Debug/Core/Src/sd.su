@@ -5,4 +5,6 @@ sd.c:52:6:SD_PowerOn	4	static
 sd.c:59:13:Error	8	static
 sd.c:64:9:SPI_ReceiveByte	16	static
 sd.c:70:16:SD_cmd	24	static
-sd.c:113:9:sd_ini	48	static
+sd.c:114:9:SD_Write_Block	24	static
+sd.c:155:9:SD_Read_Block	32	static
+sd.c:183:9:sd_ini	48	static
