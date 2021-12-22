@@ -178,50 +178,78 @@ int main(void)
   //SD_Read_Block(sect,0x0400); 					// Read block of data
   ////////////////////////////////////////////
 
-  uint8_t status_d = disk_initialize(SDFatFs.drv);			// return 0
 
 
-  // READ FILE
-  status_d = f_mount(&SDFatFs,(TCHAR const*)USERPath,0);	// Return 1
+//  ////////////////////////////////////////////
+//  uint8_t status_d = disk_initialize(SDFatFs.drv);			// return 0
+//  // READ FILE
+//  status_d = f_mount(&SDFatFs,(TCHAR const*)USERPath,0);	// Return 1
+//
+//  for (int  i = 0; i <10; i++)
+//  {
+//
+//  }
+//
+//
+//  if(status_d != FR_OK)
+//  {
+//	  Error_Handler();
+//  }
+//  else
+//  {
+//	  status_d = f_open(&MyFile, "123.txt", FA_READ);			// Return 1
+//      if(status_d != FR_OK)
+//      //if(f_open(&MyFile,"123.txt",FA_OPEN_EXISTING) != FR_OK)
+//      {
+//    	  int g = 12345;	// For debug
+//    	  int t = 12345;	// For debug
+//
+//    	  Error_Handler();
+//      }
+//      else
+//      {
+//    	  //ReadLongFile();   // Do something....
+//    	  HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET );
+//
+//    	  ReadLongFile();
+//
+//    	  f_close(&MyFile);
+//
+//
+//
+//    	  int h = 12345;	// For debug
+//      }
+//  }
+//  /////////////////////////////////////////////
 
-  for (int  i = 0; i <10; i++)
+  //write
+  uint8_t status_d = disk_initialize(SDFatFs.drv);
+
+  FRESULT res; 				//результат выполнения
+  uint8_t wtext[]="Hello from STM32!!!";
+
+  if(f_mount(&SDFatFs,(TCHAR const*)USERPath,0) != FR_OK)
   {
-
-  }
-
-
-  if(status_d != FR_OK)
-  {
-	  Error_Handler();
+    Error_Handler();
   }
   else
   {
-	  status_d = f_open(&MyFile, "123.txt", FA_READ);			// Return 1
-      if(status_d != FR_OK)
-      //if(f_open(&MyFile,"123.txt",FA_OPEN_EXISTING) != FR_OK)
+    if(f_open(&MyFile,"mywrite.txt",FA_CREATE_ALWAYS|FA_WRITE) != FR_OK)
+    {
+      Error_Handler();
+    }
+    else
+    {
+      res = f_write(&MyFile, wtext ,sizeof(wtext), (void*)&byteswritten);
+      if((byteswritten==0)||(res!=FR_OK))
       {
-    	  int g = 12345;	// For debug
-    	  int t = 12345;	// For debug
-
-    	  Error_Handler();
+        Error_Handler();
       }
-      else
-      {
-    	  //ReadLongFile();   // Do something....
-    	  HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET );
-
-    	  ReadLongFile();
-
-    	  f_close(&MyFile);
-
-
-
-    	  int h = 12345;	// For debug
-      }
+      HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET );
+      f_close(&MyFile);
+    }
   }
-//
-//  FRESULT res; 				//результат выполнения
-//  uint8_t wtext[]="Hello from STM32!!!";
+
   /* USER CODE END 2 */
 
   /* Infinite loop */

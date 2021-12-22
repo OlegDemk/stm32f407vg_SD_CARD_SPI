@@ -277,9 +277,23 @@ uint8_t sd_ini(void)
 //	}
   return 0;
 }
-
 //-----------------------------------------------
+uint8_t SPI_wait_ready(void)
+{
+  uint8_t res;
+  uint16_t cnt;
+  cnt = 0;
 
+  do { 							//Ждем окончания состояния BUSY
+    res = SPI_ReceiveByte();
+    cnt++;
+  } while ( (res!=0xFF)&&(cnt<0xFFFF) );
+
+  if (cnt>=0xFFFF) return 1;
+
+  return res;
+}
+//-----------------------------------------------
 
 
 //-----------------------------------------------

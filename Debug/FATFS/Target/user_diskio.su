@@ -1,5 +1,5 @@
 user_diskio.c:87:9:USER_initialize	16	static
 user_diskio.c:111:9:USER_status	16	static
 user_diskio.c:137:9:USER_read	24	static
-user_diskio.c:187:9:USER_write	48	static
-user_diskio.c:217:9:USER_ioctl	24	static
+user_diskio.c:187:9:USER_write	24	static
+user_diskio.c:230:9:USER_ioctl	24	static

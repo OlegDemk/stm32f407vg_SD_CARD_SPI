@@ -193,15 +193,28 @@ DRESULT USER_write (
 {
   /* USER CODE BEGIN WRITE */
   /* USER CODE HERE */
-	char test_str[] = "USER_write\n\r\0";
-	CDC_Transmit_FS(test_str, sizeof(test_str));
-	memset(test_str, 0, sizeof(test_str));
-	sprintf(test_str, "Sector: %lu; Count: %d \n\r", sector, count);
-	CDC_Transmit_FS(test_str, sizeof(test_str));
+//	char test_str[] = "USER_write\n\r\0";
+//	CDC_Transmit_FS(test_str, sizeof(test_str));
+//	memset(test_str, 0, sizeof(test_str));
+//	sprintf(test_str, "Sector: %lu; Count: %d \n\r", sector, count);
+//	CDC_Transmit_FS(test_str, sizeof(test_str));
+	if (pdrv || !count) return RES_PARERR;
+	if (Stat & STA_NOINIT) return RES_NOTRDY;
+	if (Stat & STA_PROTECT) return RES_WRPRT;
+	if (!(sdinfo.type & 4)) sector *= 512; /* Convert to byte address if needed */
+	if (count == 1) /* Single block read */
+	{
+	    SD_Write_Block((BYTE*)buff,sector); //Считаем блок в буфер
+	    count = 0;
+	}
+	else /* Multiple block read */
+	{
 
+	}
+	SPI_Release();
 
+	return count ? RES_ERROR : RES_OK;
 
-    return RES_OK;
   /* USER CODE END WRITE */
 }
 #endif /* _USE_WRITE == 1 */
@@ -235,10 +248,18 @@ DRESULT USER_ioctl (
 	res = RES_ERROR;
 	switch (cmd)
 	{
-	  case GET_SECTOR_SIZE : /* Get sectors on the disk (WORD) */
-	    *(WORD*)buff = 512;
-	    res = RES_OK;
+		case CTRL_SYNC : /* Flush dirty buffer if present */
+			SS_SD_SELECT();
+			if (SPI_wait_ready() == 0xFF)
+			{
+				res = RES_OK;
+			}
 	    break;
+
+		case GET_SECTOR_SIZE : /* Get sectors on the disk (WORD) */
+			*(WORD*)buff = 512;
+			res = RES_OK;
+		 break;
 	  default:
 	    res = RES_PARERR;
 	}
