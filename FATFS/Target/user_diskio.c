@@ -41,6 +41,13 @@
 /* Private define ------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
+#include "sd.h"
+#include "usbd_cdc_if.h"
+
+
+extern char str1[60];
+extern sd_info_ptr sdinfo;
+
 /* Disk status */
 static volatile DSTATUS Stat = STA_NOINIT;
 
@@ -82,7 +89,16 @@ DSTATUS USER_initialize (
 )
 {
   /* USER CODE BEGIN INIT */
-    Stat = STA_NOINIT;
+    //Stat = STA_NOINIT;
+//    char test_str[] = "USER_initialize\n\r\0";
+//    CDC_Transmit_FS(test_str, sizeof(test_str));
+
+    SD_PowerOn();
+    if(sd_ini()==0)
+    {
+    	Stat &= ~STA_NOINIT;		//Сбросим статус STA_NOINI
+    }
+
     return Stat;
   /* USER CODE END INIT */
 }
@@ -97,7 +113,15 @@ DSTATUS USER_status (
 )
 {
   /* USER CODE BEGIN STATUS */
-    Stat = STA_NOINIT;
+    //Stat = STA_NOINIT;
+//    char test_str[] = "USER_status\n\r\0";
+//    CDC_Transmit_FS(test_str, sizeof(test_str));
+
+    if (pdrv) return STA_NOINIT;
+	//if (pdrv) return STA_NOINIT;
+
+
+
     return Stat;
   /* USER CODE END STATUS */
 }
@@ -118,7 +142,36 @@ DRESULT USER_read (
 )
 {
   /* USER CODE BEGIN READ */
-    return RES_OK;
+//	char test_str[] = "USER_read\n\r\0";
+//	CDC_Transmit_FS(test_str, sizeof(test_str));
+//	memset(test_str, 0, sizeof(test_str));
+//	sprintf(test_str, "Sector: %lu; Count: %d \n\r", sector, count);
+//	CDC_Transmit_FS(test_str, sizeof(test_str));
+
+	if (pdrv || !count) return RES_PARERR;
+	if (Stat & STA_NOINIT) return RES_NOTRDY;
+	if (!(sdinfo.type & 4))
+	{
+		sector *= 512; /* Convert to byte address if needed */
+	}
+
+	if (count == 1) /* Single block read */
+	{
+	  SD_Read_Block(buff,sector); //Считаем блок в буфер
+	  count = 0;
+	}
+
+	else /* Multiple block read */
+	{
+
+	}
+
+	SPI_Release();
+
+	return count ? RES_ERROR : RES_OK;
+
+
+   // return RES_OK;
   /* USER CODE END READ */
 }
 
@@ -140,6 +193,14 @@ DRESULT USER_write (
 {
   /* USER CODE BEGIN WRITE */
   /* USER CODE HERE */
+	char test_str[] = "USER_write\n\r\0";
+	CDC_Transmit_FS(test_str, sizeof(test_str));
+	memset(test_str, 0, sizeof(test_str));
+	sprintf(test_str, "Sector: %lu; Count: %d \n\r", sector, count);
+	CDC_Transmit_FS(test_str, sizeof(test_str));
+
+
+
     return RES_OK;
   /* USER CODE END WRITE */
 }
@@ -160,7 +221,30 @@ DRESULT USER_ioctl (
 )
 {
   /* USER CODE BEGIN IOCTL */
-    DRESULT res = RES_ERROR;
+    // DRESULT res = RES_ERROR;
+	DRESULT res;
+
+//    char test_str[] = "USER_ioctl\n\r\0";
+//    CDC_Transmit_FS(test_str, sizeof(test_str));
+//    memset(test_str, 0, sizeof(test_str));
+//    sprintf(test_str, "cmd: %d \n\r", cmd);
+//    CDC_Transmit_FS(test_str, sizeof(test_str));
+
+	if (pdrv) return RES_PARERR;
+	if (Stat & STA_NOINIT) return RES_NOTRDY;
+	res = RES_ERROR;
+	switch (cmd)
+	{
+	  case GET_SECTOR_SIZE : /* Get sectors on the disk (WORD) */
+	    *(WORD*)buff = 512;
+	    res = RES_OK;
+	    break;
+	  default:
+	    res = RES_PARERR;
+	}
+
+	SPI_Release();
+
     return res;
   /* USER CODE END IOCTL */
 }

@@ -20,10 +20,12 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "fatfs.h"
-#include "usb_host.h"
+#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "usbd_cdc_if.h"
+
 #include "sd.h"
 /* USER CODE END Includes */
 
@@ -39,8 +41,18 @@
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 volatile uint16_t Timer1=0;
-uint8_t sect[512] = {0};
+uint8_t sect[512] = {0};				// For read sector
 char buffer1[512] ="Selection ... The..."; //Буфер данных для записи/чтения
+
+extern char str1[60];
+uint32_t byteswritten,bytesread;
+uint8_t result;
+extern char USER_Path[4]; /* logical drive path */
+
+FATFS SDFatFs;
+FATFS *fs;
+FIL MyFile;
+
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -49,6 +61,8 @@ I2C_HandleTypeDef hi2c1;
 SPI_HandleTypeDef hspi1;
 
 TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim10;
 
 /* USER CODE BEGIN PV */
 
@@ -60,15 +74,57 @@ static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_TIM2_Init(void);
-void MX_USB_HOST_Process(void);
-
+static void MX_TIM3_Init(void);
+static void MX_TIM10_Init(void);
 /* USER CODE BEGIN PFP */
+
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+FRESULT ReadLongFile(void)
+{
+  uint16_t i=0, i1=0;
+  uint32_t ind=0;
+//  uint32_t f_size = MyFile.fsize;
+  uint32_t f_size = MyFile.obj.fs->fsize;
 
+
+  sprintf(str1,"fsize: %lurn",(unsigned long)f_size);
+  //HAL_UART_Transmit(&huart1,(uint8_t*)str1,strlen(str1),0x1000);
+  ind=0;
+  do
+  {
+    if(f_size<512)
+    {
+      i1=f_size;
+    }
+    else
+    {
+      i1=512;
+    }
+    f_size-=i1;
+    f_lseek(&MyFile,ind);
+    f_read(&MyFile,sect,i1,(UINT *)&bytesread);
+
+    for(i=0;i<bytesread;i++)
+    {
+      //HAL_UART_Transmit(&huart1,sect+i,1,0x1000);
+    	//char test_str[] = "USER_read\n\r\0";
+    	CDC_Transmit_FS(sect+i, 1);								// <<<<<<<<<<<<,, READ DATA
+    	//memset(test_str, 0, sizeof(test_str));
+
+    	int u = 999 + 999;
+    }
+    ind+=i1;
+  }
+
+  while(f_size>0);
+ // HAL_UART_Transmit(&huart1,(uint8_t*)"rn",2,0x1000);
+  return FR_OK;
+
+}
 /* USER CODE END 0 */
 
 /**
@@ -101,27 +157,85 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C1_Init();
   MX_SPI1_Init();
-  MX_USB_HOST_Init();
   MX_TIM2_Init();
   MX_FATFS_Init();
+  MX_TIM3_Init();
+  MX_USB_DEVICE_Init();
+  MX_TIM10_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim2);
 
-  //uint16_t i;
-  SD_PowerOn();
-  sd_ini();
-  // SD_Write_Block((uint8_t*)buffer1,0x0400); 		// Write block of data
-  // SD_Read_Block(sect,0x0400); 					// Read block of data
+  HAL_TIM_Base_Start_IT(&htim10);		// Tim for blonk BLUE LED
 
-  int ggggg = 999;
+  //HAL_Delay(5000);
+
+  //////////////////////////////////////////
+  // Write/Read block
+  //uint16_t i;
+//  SD_PowerOn();
+//  sd_ini();
+  //SD_Write_Block((uint8_t*)buffer1,0x0400); 		// Write block of data
+  //SD_Read_Block(sect,0x0400); 					// Read block of data
+  ////////////////////////////////////////////
+
+  uint8_t status_d = disk_initialize(SDFatFs.drv);			// return 0
+
+
+  // READ FILE
+  status_d = f_mount(&SDFatFs,(TCHAR const*)USERPath,0);	// Return 1
+
+  for (int  i = 0; i <10; i++)
+  {
+
+  }
+
+
+  if(status_d != FR_OK)
+  {
+	  Error_Handler();
+  }
+  else
+  {
+	  status_d = f_open(&MyFile, "123.txt", FA_READ);			// Return 1
+      if(status_d != FR_OK)
+      //if(f_open(&MyFile,"123.txt",FA_OPEN_EXISTING) != FR_OK)
+      {
+    	  int g = 12345;	// For debug
+    	  int t = 12345;	// For debug
+
+    	  Error_Handler();
+      }
+      else
+      {
+    	  //ReadLongFile();   // Do something....
+    	  HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET );
+
+    	  ReadLongFile();
+
+    	  f_close(&MyFile);
+
+
+
+    	  int h = 12345;	// For debug
+      }
+  }
+//
+//  FRESULT res; 				//результат выполнения
+//  uint8_t wtext[]="Hello from STM32!!!";
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+//	  char test_str[] = "TEST TRAMSMIT\n\r\0";
+//	  CDC_Transmit_FS(test_str, sizeof(test_str));
+//	  HAL_Delay(500);
+
+
+
+
     /* USER CODE END WHILE */
-    MX_USB_HOST_Process();
 
     /* USER CODE BEGIN 3 */
   }
@@ -289,6 +403,82 @@ static void MX_TIM2_Init(void)
 }
 
 /**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 4000-1;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 10000;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+
+}
+
+/**
+  * @brief TIM10 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM10_Init(void)
+{
+
+  /* USER CODE BEGIN TIM10_Init 0 */
+
+  /* USER CODE END TIM10_Init 0 */
+
+  /* USER CODE BEGIN TIM10_Init 1 */
+
+  /* USER CODE END TIM10_Init 1 */
+  htim10.Instance = TIM10;
+  htim10.Init.Prescaler = 4000-1;
+  htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim10.Init.Period = 10000-1;
+  htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim10) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM10_Init 2 */
+
+  /* USER CODE END TIM10_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -424,6 +614,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		// HAL_GPIO_TogglePin(GPIOD, LD6_Pin); // For test ()
 		Timer1++;
 	}
+	if(htim == &htim10)				// Blink led
+	{
+		HAL_GPIO_TogglePin(GPIOD, LD6_Pin);
+	}
 }
 //----------------------------------------------------------
 /* USER CODE END 4 */
@@ -436,6 +630,8 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
+	HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_RESET );
+
   __disable_irq();
   while (1)
   {

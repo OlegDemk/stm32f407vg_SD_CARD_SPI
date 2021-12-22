@@ -7,4 +7,4 @@ sd.c:64:9:SPI_ReceiveByte	16	static
 sd.c:70:16:SD_cmd	24	static
 sd.c:114:9:SD_Write_Block	24	static
 sd.c:155:9:SD_Read_Block	32	static
-sd.c:183:9:sd_ini	48	static
+sd.c:188:9:sd_ini	48	static
