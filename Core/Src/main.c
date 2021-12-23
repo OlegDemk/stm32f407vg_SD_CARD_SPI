@@ -40,6 +40,8 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
+#define _USE_LFN 1
+
 volatile uint16_t Timer1=0;
 uint8_t sect[512] = {0};				// For read sector
 char buffer1[512] ="Selection ... The..."; //Буфер данных для записи/чтения
@@ -110,7 +112,7 @@ FRESULT ReadLongFile(void)
 
     for(i=0;i<bytesread;i++)
     {
-      //HAL_UART_Transmit(&huart1,sect+i,1,0x1000);
+    	//HAL_UART_Transmit(&huart1,sect+i,1,0x1000);
     	//char test_str[] = "USER_read\n\r\0";
     	CDC_Transmit_FS(sect+i, 1);								// <<<<<<<<<<<<,, READ DATA
     	//memset(test_str, 0, sizeof(test_str));
@@ -134,7 +136,10 @@ FRESULT ReadLongFile(void)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+	FILINFO fileInfo;
+	char *fn;
+	DIR dir;
+	DWORD fre_clust, fre_sect, tot_sect;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -167,7 +172,7 @@ int main(void)
 
   HAL_TIM_Base_Start_IT(&htim10);		// Tim for blonk BLUE LED
 
-  //HAL_Delay(5000);
+
 
   //////////////////////////////////////////
   // Write/Read block
@@ -208,10 +213,10 @@ int main(void)
 //      }
 //      else
 //      {
-//    	  //ReadLongFile();   // Do something....
+//
 //    	  HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET );
 //
-//    	  ReadLongFile();
+//    	  ReadLongFile();					// Read data from file
 //
 //    	  f_close(&MyFile);
 //
@@ -222,40 +227,119 @@ int main(void)
 //  }
 //  /////////////////////////////////////////////
 
-  //write
+//  // Create file and write data in file
+//  uint8_t status_d = disk_initialize(SDFatFs.drv);
+//
+//  FRESULT res; 				//результат выполнения
+//  uint8_t wtext[]="Hello from STM32!!!";
+//
+//  if(f_mount(&SDFatFs,(TCHAR const*)USERPath,0) != FR_OK)
+//  {
+//    Error_Handler();
+//  }
+//  else
+//  {
+//    if(f_open(&MyFile,"mywrite.txt",FA_CREATE_ALWAYS|FA_WRITE) != FR_OK)
+//    {
+//      Error_Handler();
+//    }
+//    else
+//    {
+//      res = f_write(&MyFile, wtext ,sizeof(wtext), (void*)&byteswritten);
+//      if((byteswritten==0)||(res!=FR_OK))
+//      {
+//        Error_Handler();
+//      }
+//      HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET );
+//      f_close(&MyFile);
+//    }
+//  }
+  /////////////////////////////////////////////
   uint8_t status_d = disk_initialize(SDFatFs.drv);
 
-  FRESULT res; 				//результат выполнения
-  uint8_t wtext[]="Hello from STM32!!!";
-
-  if(f_mount(&SDFatFs,(TCHAR const*)USERPath,0) != FR_OK)
+  //read dir
+  if(f_mount(&SDFatFs,(TCHAR const*)USERPath,0)!=FR_OK)
   {
     Error_Handler();
   }
   else
   {
-    if(f_open(&MyFile,"mywrite.txt",FA_CREATE_ALWAYS|FA_WRITE) != FR_OK)
+//    fileInfo.altname = (char*)sect;     	// <<<<<<<<<<<<<<<<<<<<<
+//    fileInfo.fsize = sizeof(sect);
+//	fileInfo.altname = (char*)sect;     	// <<<<<<<<<<<<<<<<<<<<<
+//	fileInfo.fsize = sizeof(sect);v
+
+	strcpy(fileInfo.altname, (char*)sect);     	// <<<<<<<<<<<<<<<<<<<<<
+	fileInfo.fsize = sizeof(sect);
+
+    result = f_opendir(&dir, "/");				// Path to directory. "/" - mean root dir
+    if (result == FR_OK)
     {
-      Error_Handler();
-    }
-    else
-    {
-      res = f_write(&MyFile, wtext ,sizeof(wtext), (void*)&byteswritten);
-      if((byteswritten==0)||(res!=FR_OK))
-      {
-        Error_Handler();
-      }
-      HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET );
-      f_close(&MyFile);
+    	while(1)
+    	{
+    	    result = f_readdir(&dir, &fileInfo);		// Read dit
+    	    if (result==FR_OK && fileInfo.fname[0])		// If there are files
+    	    {
+    	    	 fn = fileInfo.altname;
+    	    	 if(strlen(fn))
+    	    	 {
+    	    		 // Print name of file
+    	    		 //HAL_UART_Transmit(&huart1,(uint8_t*)fn,strlen(fn),0x1000);
+    	    		 int w = 99;
+    	    	 }
+    	    	 else
+    	    	 {
+    	    		 //HAL_UART_Transmit(&huart1,(uint8_t*)fileInfo.fname,strlen((char*)fileInfo.fname),0x1000);
+    	    		 int e = 99;
+    	    	 }
+
+    	    	 if(fileInfo.fattrib&AM_DIR)
+    	    	 {
+    	    	    //HAL_UART_Transmit(&huart1,(uint8_t*)" [DIR]",7,0x1000);
+    	    		 int r = 99;
+    	    	 }
+    	    }
+    	    else break;
+    	}
+
+    	// print free and used memory
+    	f_getfree("/", &fre_clust, &fs);
+    	sprintf(str1,"fre_clust: %lurn",fre_clust);
+    	//HAL_UART_Transmit(&huart1,(uint8_t*)str1,strlen(str1),0x1000);
+
+    	sprintf(str1,"n_fatent: %lurn",fs->n_fatent);
+    	//HAL_UART_Transmit(&huart1,(uint8_t*)str1,strlen(str1),0x1000);
+
+    	sprintf(str1,"fs_csize: %drn",fs->csize);
+    	//HAL_UART_Transmit(&huart1,(uint8_t*)str1,strlen(str1),0x1000);
+
+    	tot_sect = (fs->n_fatent - 2) * fs->csize;
+    	sprintf(str1,"tot_sect: %lurn",tot_sect);
+    	//HAL_UART_Transmit(&huart1,(uint8_t*)str1,strlen(str1),0x1000);
+
+    	fre_sect = fre_clust * fs->csize;
+    	sprintf(str1,"fre_sect: %lurn",fre_sect);
+    	//HAL_UART_Transmit(&huart1,(uint8_t*)str1,strlen(str1),0x1000);
+
+    	sprintf(str1, "%lu KB total drive space.rn%lu KB available.rn",
+    	fre_sect/2, tot_sect/2);
+    	//HAL_UART_Transmit(&huart1,(uint8_t*)str1,strlen(str1),0x1000);
+
+    	f_closedir(&dir);
     }
   }
 
+
+
+  FATFS_UnLinkDriver(USERPath);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
+
 //	  char test_str[] = "TEST TRAMSMIT\n\r\0";
 //	  CDC_Transmit_FS(test_str, sizeof(test_str));
 //	  HAL_Delay(500);
