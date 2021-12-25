@@ -85,194 +85,142 @@ static void MX_TIM10_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+// ------------------------------------------------------------------------------
+void write_block(void)
+{
+	SD_PowerOn();
+	sd_ini();
+
+	SD_Write_Block((uint8_t*)buffer1,0x0400); 		// Write block of data
+}
+// ------------------------------------------------------------------------------
+void read_block(void)
+{
+	SD_PowerOn();
+	sd_ini();
+
+	SD_Read_Block(sect,0x0400); 					// Read block of data
+}
+// ------------------------------------------------------------------------------
 FRESULT ReadLongFile(void)
 {
-  uint16_t i=0, i1=0;
-  uint32_t ind=0;
+	uint16_t i=0, i1=0;
+	uint32_t ind=0;
 //  uint32_t f_size = MyFile.fsize;
-  uint32_t f_size = MyFile.obj.fs->fsize;
+	uint32_t f_size = MyFile.obj.fs->fsize;
 
+	sprintf(str1,"fsize: %lurn",(unsigned long)f_size);
+	//HAL_UART_Transmit(&huart1,(uint8_t*)str1,strlen(str1),0x1000);
+	ind = 0;
+	do
+	{
+		if(f_size < 512)
+		{
+			i1 = f_size;
+		}
+		else
+		{
+			i1 = 512;
+		}
+		f_size -= i1;
+		f_lseek(&MyFile,ind);
+		f_read(&MyFile,sect,i1,(UINT *)&bytesread);
 
-  sprintf(str1,"fsize: %lurn",(unsigned long)f_size);
-  //HAL_UART_Transmit(&huart1,(uint8_t*)str1,strlen(str1),0x1000);
-  ind=0;
-  do
-  {
-    if(f_size<512)
-    {
-      i1=f_size;
-    }
-    else
-    {
-      i1=512;
-    }
-    f_size-=i1;
-    f_lseek(&MyFile,ind);
-    f_read(&MyFile,sect,i1,(UINT *)&bytesread);
-
-    for(i=0;i<bytesread;i++)
-    {
-    	//HAL_UART_Transmit(&huart1,sect+i,1,0x1000);
-    	//char test_str[] = "USER_read\n\r\0";
-    	CDC_Transmit_FS(sect+i, 1);								// <<<<<<<<<<<<,, READ DATA
-    	//memset(test_str, 0, sizeof(test_str));
-
-    	int u = 999 + 999;
-    }
-    ind+=i1;
-  }
-
-  while(f_size>0);
+		for(i=0; i<bytesread; i++)
+		{
+			//HAL_UART_Transmit(&huart1,sect+i,1,0x1000);
+			//char test_str[] = "USER_read\n\r\0";
+			CDC_Transmit_FS(sect+i, 1);								// <<<<<<<<<<<<,, READ DATA
+			//memset(test_str, 0, sizeof(test_str));
+		}
+		ind += i1;
+	} while(f_size>0);
  // HAL_UART_Transmit(&huart1,(uint8_t*)"rn",2,0x1000);
   return FR_OK;
-
 }
-/* USER CODE END 0 */
-
-/**
-  * @brief  The application entry point.
-  * @retval int
-  */
-int main(void)
+// ------------------------------------------------------------------------------
+/* Function read file from root dir. If file didn't find, function goes to  Error_Handler
+ */
+void read_file(char* name)
 {
-  /* USER CODE BEGIN 1 */
+	uint8_t status_d = disk_initialize(SDFatFs.drv);				// return 0
+
+	status_d = f_mount(&SDFatFs,(TCHAR const*)USERPath,0);			// Return 1
+	if(status_d != FR_OK)
+	{
+		Error_Handler();											// Turn OFF green LED if error
+	}
+	else
+	{
+		status_d = f_open(&MyFile, name, FA_READ);					// If OK. Return 1
+	    if(status_d != FR_OK)
+	    {
+	    	Error_Handler();
+	    }
+	    else
+	    {
+	    	HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET );		// Turn ON GREEN LED if all OKAY
+	    	ReadLongFile();											// Read data from file
+	    	f_close(&MyFile);										// Close file after reading data
+	    }
+	 }
+}
+// ------------------------------------------------------------------------------
+// Create file and write data in file
+void create_file(char* file_name, char* data, uint16_t size_of_data)
+{
+  uint8_t status_d = disk_initialize(SDFatFs.drv);
+
+  FRESULT res; 											// Result enum
+  //uint8_t wtext[] = "Hello from STM32!!!";
+
+  if(f_mount(&SDFatFs,(TCHAR const*)USERPath,0) != FR_OK)
+  {
+	  Error_Handler();
+  }
+  else
+  {
+	  if(f_open(&MyFile, file_name ,FA_CREATE_ALWAYS|FA_WRITE) != FR_OK)
+	  {
+		  Error_Handler();
+	  }
+	  else
+	  {
+		  res = f_write(&MyFile, data , size_of_data, (void*)&byteswritten);
+		  if((byteswritten==0)||(res!=FR_OK))
+		  {
+			  Error_Handler();
+		  }
+		  HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET );
+		  f_close(&MyFile);
+    }
+  }
+}
+// ------------------------------------------------------------------------------
+void read_files_and_folders_in_dir(char *dir_path)
+{
 	FILINFO fileInfo;
 	char *fn;
 	DIR dir;
 	DWORD fre_clust, fre_sect, tot_sect;
-  /* USER CODE END 1 */
 
-  /* MCU Configuration--------------------------------------------------------*/
+	uint8_t status_d = disk_initialize(SDFatFs.drv);
+	//read dir
+	if(f_mount(&SDFatFs,(TCHAR const*)USERPath,0)!=FR_OK)
+	{
+		Error_Handler();
+	}
+	else
+	{
+		//  fileInfo.altname = (char*)sect;
+		//  fileInfo.fsize = sizeof(sect);
+		//	fileInfo.altname = (char*)sect;
+		//	fileInfo.fsize = sizeof(sect);v
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
-
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock */
-  SystemClock_Config();
-
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_I2C1_Init();
-  MX_SPI1_Init();
-  MX_TIM2_Init();
-  MX_FATFS_Init();
-  MX_TIM3_Init();
-  MX_USB_DEVICE_Init();
-  MX_TIM10_Init();
-  /* USER CODE BEGIN 2 */
-  HAL_TIM_Base_Start_IT(&htim2);
-
-  HAL_TIM_Base_Start_IT(&htim10);		// Tim for blonk BLUE LED
-
-
-
-  //////////////////////////////////////////
-  // Write/Read block
-  //uint16_t i;
-//  SD_PowerOn();
-//  sd_ini();
-  //SD_Write_Block((uint8_t*)buffer1,0x0400); 		// Write block of data
-  //SD_Read_Block(sect,0x0400); 					// Read block of data
-  ////////////////////////////////////////////
-
-
-
-//  ////////////////////////////////////////////
-//  uint8_t status_d = disk_initialize(SDFatFs.drv);			// return 0
-//  // READ FILE
-//  status_d = f_mount(&SDFatFs,(TCHAR const*)USERPath,0);	// Return 1
-//
-//  for (int  i = 0; i <10; i++)
-//  {
-//
-//  }
-//
-//
-//  if(status_d != FR_OK)
-//  {
-//	  Error_Handler();
-//  }
-//  else
-//  {
-//	  status_d = f_open(&MyFile, "123.txt", FA_READ);			// Return 1
-//      if(status_d != FR_OK)
-//      //if(f_open(&MyFile,"123.txt",FA_OPEN_EXISTING) != FR_OK)
-//      {
-//    	  int g = 12345;	// For debug
-//    	  int t = 12345;	// For debug
-//
-//    	  Error_Handler();
-//      }
-//      else
-//      {
-//
-//    	  HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET );
-//
-//    	  ReadLongFile();					// Read data from file
-//
-//    	  f_close(&MyFile);
-//
-//
-//
-//    	  int h = 12345;	// For debug
-//      }
-//  }
-//  /////////////////////////////////////////////
-
-//  // Create file and write data in file
-//  uint8_t status_d = disk_initialize(SDFatFs.drv);
-//
-//  FRESULT res; 				//результат выполнения
-//  uint8_t wtext[]="Hello from STM32!!!";
-//
-//  if(f_mount(&SDFatFs,(TCHAR const*)USERPath,0) != FR_OK)
-//  {
-//    Error_Handler();
-//  }
-//  else
-//  {
-//    if(f_open(&MyFile,"mywrite.txt",FA_CREATE_ALWAYS|FA_WRITE) != FR_OK)
-//    {
-//      Error_Handler();
-//    }
-//    else
-//    {
-//      res = f_write(&MyFile, wtext ,sizeof(wtext), (void*)&byteswritten);
-//      if((byteswritten==0)||(res!=FR_OK))
-//      {
-//        Error_Handler();
-//      }
-//      HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET );
-//      f_close(&MyFile);
-//    }
-//  }
-  /////////////////////////////////////////////
-  uint8_t status_d = disk_initialize(SDFatFs.drv);
-
-  //read dir
-  if(f_mount(&SDFatFs,(TCHAR const*)USERPath,0)!=FR_OK)
-  {
-    Error_Handler();
-  }
-  else
-  {
-//    fileInfo.altname = (char*)sect;     	// <<<<<<<<<<<<<<<<<<<<<
-//    fileInfo.fsize = sizeof(sect);
-//	fileInfo.altname = (char*)sect;     	// <<<<<<<<<<<<<<<<<<<<<
-//	fileInfo.fsize = sizeof(sect);v
-
-	strcpy(fileInfo.altname, (char*)sect);     	// <<<<<<<<<<<<<<<<<<<<<
+	strcpy(fileInfo.altname, (char*)sect);
 	fileInfo.fsize = sizeof(sect);
 
-    result = f_opendir(&dir, "/");				// Path to directory. "/" - mean root dir
+    result = f_opendir(&dir, dir_path);				// Path to directory. "/" - mean root dir
     if (result == FR_OK)
     {
     	while(1)
@@ -328,21 +276,88 @@ int main(void)
     	f_closedir(&dir);
     }
   }
-
-
-
   FATFS_UnLinkDriver(USERPath);
+}
+// ------------------------------------------------------------------------------
+
+
+/* USER CODE END 0 */
+
+/**
+  * @brief  The application entry point.
+  * @retval int
+  */
+int main(void)
+{
+  /* USER CODE BEGIN 1 */
+//	FILINFO fileInfo;
+//	char *fn;
+//	DIR dir;
+//	DWORD fre_clust, fre_sect, tot_sect;
+  /* USER CODE END 1 */
+
+  /* MCU Configuration--------------------------------------------------------*/
+
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
+
+  /* USER CODE BEGIN Init */
+
+  /* USER CODE END Init */
+
+  /* Configure the system clock */
+  SystemClock_Config();
+
+  /* USER CODE BEGIN SysInit */
+
+  /* USER CODE END SysInit */
+
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_I2C1_Init();
+  MX_SPI1_Init();
+  MX_TIM2_Init();
+  MX_FATFS_Init();
+  MX_TIM3_Init();
+  MX_USB_DEVICE_Init();
+  MX_TIM10_Init();
+  /* USER CODE BEGIN 2 */
+  HAL_TIM_Base_Start_IT(&htim2);		// For delay
+
+  HAL_TIM_Base_Start_IT(&htim10);		// Tim for blonk BLUE LED
+
+
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  HAL_Delay(100);
+
   while (1)
   {
+	  /////////////////////////////////////////////////////////////
+	  // 1. Write/Read blocks. Without FATFS
+	  // Write bloks
+	  // write_block();
 
+	  // Read blocks
+	  // read_block();
 
-//	  char test_str[] = "TEST TRAMSMIT\n\r\0";
-//	  CDC_Transmit_FS(test_str, sizeof(test_str));
-//	  HAL_Delay(500);
+	  // 2. Read file with "123.txt" name in root directory
+	  // read_file("123.txt");
+	  // HAL_Delay(1000);
+
+	  // 3. Write or rewrite file qwerty.txt and sawe where "Test write in file !!!"
+	  // char write_data[] = "Test write in file !!!";
+	  // create_file("qwerty.txt", write_data , sizeof(write_data));
+	  // HAL_Delay(1000);
+
+	  // 4. Read files and folders in dir. "/" - root dir
+	  read_files_and_folders_in_dir("/");
+	  HAL_Delay(1000);
+	  /////////////////////////////////////////////////////////////
+
 
 
 
@@ -744,7 +759,7 @@ void Error_Handler(void)
   /* User can add his own implementation to report the HAL error return state */
 	HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_RESET );
 
-  __disable_irq();
+  __disable_irq();	// Turn OFF all interrupts
   while (1)
   {
   }
