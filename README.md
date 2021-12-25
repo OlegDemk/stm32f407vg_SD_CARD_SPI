@@ -6,13 +6,11 @@ Generate code in STM32CubeIDE.
 SD card connected to SPI1, speed: 2,5MBit/s.
 Functions:
 
-1. Read/Write bloks. (Doesnt use FATFS functions).
+1. Read/Write bloks. (Doesn't use FATFS functions).
 
-2. Read files.
+2. Read/Write files.
 
-3. Write files.
-
-4. Read files and folders in dir.
+3. Read files and folders in dir.
 
 Sourse: https://narodstream.ru/stm-urok-88-sd-spi-fatfs-chast-1/
 
