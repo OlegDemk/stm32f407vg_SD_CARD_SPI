@@ -12,8 +12,6 @@ Functions:
 
 3. Read files and folders in dir.
 
-4. Also RTC added in function: Start_Blue_LED_Blink. Made changes in hardware part: Removed R26, connect to VBAT (pin 6) 3.3V battery, and LF cristal and capacitors.
-
 Sourse: https://narodstream.ru/stm-urok-88-sd-spi-fatfs-chast-1/
 
 ![alt text](https://github.com/OlegDemk/stm32f407vg_SD_CARD_SPI/blob/main/CD.png)
